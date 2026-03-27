@@ -1,12 +1,7 @@
-<!-- Kini ang file para sa database connection gamit ang MySQLi extension. 
-Nag define siya og Database class nga adunay mga properties para sa host, 
-database name, username, password, ug connection object. Ang connect method
-mag establish og connection sa database ug mag set sa character set sa utf8mb4 
-para ma support ang emojis ug special characters. -->
 <?php
 class Database {
     private $host = "localhost";
-    private $db_name = "yanqr_social";
+    private $db_name = "yanqr_system";
     private $username = "root";
     private $password = "";
     private $conn;
