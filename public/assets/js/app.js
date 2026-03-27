@@ -1,6 +1,4 @@
-// Kini ang JavaScript file para sa application.
-// Nag handle siya sa mga interactive features sama sa like button, 
-// delete confirmation, ug auto-hide sa alerts.
+// Like button AJAX
 document.querySelectorAll('.like-form').forEach(form => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -19,36 +17,66 @@ document.querySelectorAll('.like-form').forEach(form => {
         if (data.success) {
             const btn = form.querySelector('.like-btn');
             const icon = btn.querySelector('i');
-            const countSpan = form.closest('.post-card').querySelector('.post-stats span:first-child');
+            const likeText = btn.querySelector('.like-text');
+            const countDisplay = form.closest('.post-card').querySelector('.like-count-display');
             
             if (data.action === 'liked') {
                 btn.classList.add('liked');
                 icon.classList.remove('far');
                 icon.classList.add('fas');
+                if (likeText) likeText.textContent = 'Liked';
             } else {
                 btn.classList.remove('liked');
                 icon.classList.remove('fas');
                 icon.classList.add('far');
+                if (likeText) likeText.textContent = 'Like';
             }
             
-            countSpan.innerHTML = `<i class="fas fa-heart"></i> ${data.count}`;
+            if (countDisplay) {
+                countDisplay.innerHTML = `<i class="fas fa-heart"></i> ${data.count}`;
+            }
         }
     });
 });
 
-// Confirm delete
+// Confirm delete for posts and comments
 document.querySelectorAll('.delete-btn, .delete-comment-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        if (!confirm('Are you sure?')) {
+        if (!confirm('Are you sure you want to delete this?')) {
             e.preventDefault();
         }
     });
 });
 
-// Auto-hide alerts
+// Auto-hide alerts after 5 seconds
 document.querySelectorAll('.alert').forEach(alert => {
     setTimeout(() => {
         alert.style.opacity = '0';
         setTimeout(() => alert.remove(), 500);
     }, 5000);
+});
+
+// Show/hide comment form
+window.toggleCommentForm = function(postId) {
+    const form = document.getElementById('comment-form-' + postId);
+    if (form) {
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'flex';
+            form.querySelector('input').focus();
+        } else {
+            form.style.display = 'none';
+        }
+    }
+};
+
+// Preview avatar before upload
+document.getElementById('avatar')?.addEventListener('change', function(e) {
+    if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.querySelector('.profile-avatar');
+            if (preview) preview.src = e.target.result;
+        };
+        reader.readAsDataURL(this.files[0]);
+    }
 });
