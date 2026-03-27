@@ -1,10 +1,9 @@
 <?php
-require_once 'C:\\Xampp\\htdocs\\yanqr_system\\app\\models\\CommentModel.php';
-require_once 'C:\\Xampp\\htdocs\\yanqr_system\\config\\database.php';
+require_once __DIR__ . '/../models/CommentModel.php';
+require_once __DIR__ . '/../../config/database.php';
 
 class CommentController {
     private $commentModel;
-    private $db;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) {
@@ -12,17 +11,16 @@ class CommentController {
             exit();
         }
         
-        $database = new Database();
-        $this->db = $database->connect();
-        $this->commentModel = new CommentModel($this->db);
+        $db = new Database();
+        $this->commentModel = new CommentModel($db->connect());
     }
 
     public function create() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $post_id = $_POST['post_id'] ?? 0;
-            $content = $_POST['content'] ?? '';
+            $post_id = isset($_POST['post_id']) ? (int)$_POST['post_id'] : 0;
+            $content = isset($_POST['content']) ? trim($_POST['content']) : '';
             
-            if (!empty($content)) {
+            if (!empty($content) && $post_id > 0) {
                 $this->commentModel->create($post_id, $_SESSION['user_id'], $content);
             }
         }
@@ -31,13 +29,13 @@ class CommentController {
         exit();
     }
 
-    public function delete($id) {
-        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $comment = $this->commentModel->getCommentById($id);
-            
-            if ($comment && $comment['user_id'] == $_SESSION['user_id']) {
-                $this->commentModel->delete($id, $_SESSION['user_id']);
-            }
+    public function delete($id = null) {
+        if ($id === null && isset($_POST['id'])) {
+            $id = (int)$_POST['id'];
+        }
+        
+        if ($id && $_SERVER['REQUEST_METHOD'] == 'POST') {
+            $this->commentModel->delete($id, $_SESSION['user_id']);
         }
         
         header('Location: ' . $_SERVER['HTTP_REFERER']);
