@@ -1,139 +1,202 @@
-<!-- Kini ang view file para sa profile page.
-Nag display siya og profile information sa user, sama sa profile picture, full name, username,
-bio, location, favorite game, ug level. Kung ang profile kay sa naka log in nga user, makita pud
-niya ang edit button para i edit ang iyang profile. Sa ubos sa profile information, makita pud
-niya ang listahan sa iyang mga posts. Ang mga posts nga makita diri kay gikan sa 
-ProfileController nga nag fetch sa user's posts base sa iyang user ID. -->
-<?php require_once 'C:\\Xampp\\htdocs\\yanqr_system\\app\\views\\layouts\\header.php'; ?>
+<?php require_once __DIR__ . '/../layouts/header.php'; ?>
 
-<div class="profile-container">
-    <div class="profile-cover">
+<div class="profile-header">
+    <!-- Circle Avatar - FIXED -->
+    <div class="avatar-section">
+        <img src="/yanqr_system/public/assets/uploads/profiles/<?php echo $user['avatar'] ?? 'default-avatar.png'; ?>" 
+             class="profile-avatar-circle" 
+             alt="Profile Avatar">
         <?php if ($is_owner): ?>
-            <a href="/yanqr_system/public/profile/edit" class="edit-cover-btn">
-                <i class="fas fa-camera"></i> Edit Cover
-            </a>
+        <form action="/yanqr_system/public/profile/avatar" method="POST" enctype="multipart/form-data" class="avatar-upload-form">
+            <label for="avatar-upload" class="avatar-edit-btn">
+                <i class="fas fa-camera"></i>
+            </label>
+            <input type="file" name="avatar" id="avatar-upload" accept="image/*" style="display: none;" onchange="this.form.submit()">
+        </form>
         <?php endif; ?>
     </div>
     
+    <!-- Profile Info -->
     <div class="profile-info">
-        <div class="profile-avatar-wrapper">
-            <img src="/yanqr_system/public/assets/uploads/profiles/<?php echo $user['profile_image'] ?? 'default-avatar.png'; ?>" 
-                 alt="<?php echo htmlspecialchars($user['username'] ?? ''); ?>" class="profile-avatar-large">
-            <?php if ($is_owner): ?>
-                <a href="/yanqr_system/public/profile/edit" class="edit-avatar-btn">
-                    <i class="fas fa-camera"></i>
-                </a>
-            <?php endif; ?>
-        </div>
+        <h2><?php echo htmlspecialchars($user['username']); ?></h2>
+        <p class="profile-fullname"><?php echo htmlspecialchars($user['full_name'] ?? 'FORD'); ?></p>
         
-        <div class="profile-details">
-            <h1><?php echo htmlspecialchars($user['full_name'] ?? 'Unknown User'); ?></h1>
-            <p class="profile-username">@<?php echo htmlspecialchars($user['username'] ?? 'unknown'); ?></p>
-            
-            <?php if (!empty($user['bio'])): ?>
-                <p class="profile-bio"><?php echo nl2br(htmlspecialchars($user['bio'])); ?></p>
-            <?php endif; ?>
-            
-            <div class="profile-meta">
-                <?php if (!empty($user['location'])): ?>
-                    <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($user['location']); ?></span>
-                <?php endif; ?>
-                
-                <?php if (!empty($user['favorite_game'])): ?>
-                    <span><i class="fas fa-gamepad"></i> <?php echo htmlspecialchars($user['favorite_game']); ?></span>
-                <?php endif; ?>
-                
-                <span><i class="fas fa-calendar"></i> Joined <?php echo isset($user['created_at']) ? date('F Y', strtotime($user['created_at'])) : 'Recently'; ?></span>
+        <?php if (!empty($user['bio'])): ?>
+            <div class="profile-bio">
+                <?php echo nl2br(htmlspecialchars($user['bio'])); ?>
             </div>
-            
-            <div class="profile-level">
-                <span class="level-badge">Level <?php echo $user['level'] ?? 1; ?></span>
-            </div>
-        </div>
+        <?php endif; ?>
         
         <div class="profile-stats">
             <div class="stat-item">
-                <span class="stat-value"><?php echo count($posts); ?></span>
+                <span class="stat-number"><?php echo count($posts); ?></span>
                 <span class="stat-label">Posts</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Followers</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Following</span>
             </div>
         </div>
         
-        <?php if (!$is_owner): ?>
-            <div class="profile-actions">
-                <button class="btn primary" onclick="window.location.href='/yanqr_system/public/message/<?php echo $user['username']; ?>'">
-                    <i class="fas fa-envelope"></i> Message
-                </button>
-            </div>
-        <?php else: ?>
-            <div class="profile-actions">
-                <a href="/yanqr_system/public/profile/edit" class="btn primary">
-                    <i class="fas fa-edit"></i> Edit Profile
-                </a>
-            </div>
-        <?php endif; ?>
-    </div>
-    
-    <div class="profile-tabs">
-        <button class="tab-btn active" onclick="showTab('posts')">Posts</button>
-    </div>
-    
-    <div class="tab-content">
-        <div id="posts-tab" class="tab-pane active">
-            <?php if (empty($posts)): ?>
-                <div class="no-posts">
-                    <i class="fas fa-newspaper"></i>
-                    <h3>No posts yet</h3>
-                    <?php if ($is_owner): ?>
-                        <p>Share your first gaming moment!</p>
-                        <a href="/yanqr_system/public/post/create" class="btn primary">Create Post</a>
-                    <?php endif; ?>
-                </div>
-            <?php else: ?>
-                <?php foreach ($posts as $post): ?>
-                    <div class="post-card">
-                        <div class="post-header">
-                            <img src="/yanqr_system/public/assets/uploads/profiles/<?php echo $user['profile_image'] ?? 'default-avatar.png'; ?>" 
-                                 alt="" class="post-avatar">
-                            <div class="post-info">
-                                <h3><?php echo htmlspecialchars($user['full_name'] ?? ''); ?></h3>
-                                <span class="post-date"><?php echo date('M d, Y', strtotime($post['created_at'])); ?></span>
-                            </div>
-                        </div>
-                        
-                        <div class="post-content">
-                            <p><?php echo nl2br(htmlspecialchars($post['content'])); ?></p>
-                            <?php if (!empty($post['game_tag'])): ?>
-                                <span class="game-tag"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($post['game_tag']); ?></span>
-                            <?php endif; ?>
-                            
-                            <?php if (!empty($post['image'])): ?>
-                                <img src="/yanqr_system/public/assets/uploads/posts/<?php echo $post['image']; ?>" 
-                                     alt="Post image" class="post-image">
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="post-stats">
-                            <span><i class="fas fa-heart"></i> <?php echo $post['like_count'] ?? 0; ?></span>
-                            <span><i class="fas fa-comment"></i> <?php echo $post['comment_count'] ?? 0; ?></span>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
+        <div class="member-badge">
+            <i class="fas fa-calendar-alt"></i> Member since <?php echo date('M Y', strtotime($user['created_at'])); ?>
         </div>
     </div>
 </div>
 
-<script>
-function showTab(tabName) {
-    document.querySelectorAll('.tab-pane').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.getElementById(tabName + '-tab').classList.add('active');
-    event.target.classList.add('active');
-}
-</script>
+<div class="profile-posts">
+    <h3>My Posts</h3>
+    <?php if (empty($posts)): ?>
+        <div class="no-posts">No posts yet. Create your first post!</div>
+    <?php endif; ?>
+    
+    <?php foreach ($posts as $post): ?>
+        <div class="post-card">
+            <div class="post-content">
+                <p><?php echo nl2br(htmlspecialchars($post['content'])); ?></p>
+            </div>
+            <div class="post-stats">
+                <span><i class="fas fa-heart"></i> <?php echo $post['likes_count'] ?? 0; ?></span>
+                <span><i class="fas fa-comment"></i> <?php echo $post['comments_count'] ?? 0; ?></span>
+            </div>
+            <div class="post-date"><?php echo date('M d, Y', strtotime($post['created_at'])); ?></div>
+        </div>
+    <?php endforeach; ?>
+</div>
 
-<?php require_once 'C:\\Xampp\\htdocs\\yanqr_system\\app\\views\\layouts\\footer.php'; ?>
+<style>
+.profile-header {
+    display: flex;
+    gap: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.avatar-section {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.profile-avatar-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #FFD700;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    background: #1a1a2e;
+}
+
+.avatar-edit-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: #FFD700;
+    color: #1a1a2e;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid #1a1a2e;
+    font-size: 16px;
+}
+
+.avatar-edit-btn:hover {
+    transform: scale(1.1);
+    background: #CCB000;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-info h2 {
+    color: #FFD700;
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+.profile-fullname {
+    color: #ccc;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.profile-bio {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin: 15px 0;
+    line-height: 1.5;
+}
+
+.profile-stats {
+    display: flex;
+    gap: 30px;
+    margin: 15px 0;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFD700;
+}
+
+.stat-label {
+    color: #888;
+    font-size: 12px;
+}
+
+.member-badge {
+    display: inline-block;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid #FFD700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #FFD700;
+}
+
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .profile-avatar-circle {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .avatar-edit-btn {
+        width: 35px;
+        height: 35px;
+        bottom: 5px;
+        right: 5px;
+        font-size: 14px;
+    }
+    
+    .profile-stats {
+        justify-content: center;
+    }
+}
+</style>
+
+<?php require_once __DIR__ . '/../layouts/footer.php'; ?>
