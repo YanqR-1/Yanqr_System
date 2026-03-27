@@ -1,180 +1,88 @@
 <?php
 class PostModel {
     private $conn;
-    private $table = 'posts';
 
     public function __construct($db) {
         $this->conn = $db;
     }
 
-    // Create post
-    public function create($user_id, $data) {
-        $query = "INSERT INTO " . $this->table . " (user_id, content, image, game_tag) 
-                  VALUES (?, ?, ?, ?)";
-        
-        $stmt = $this->conn->prepare($query);
-        
-        $content = $data['content'];
-        $game_tag = $data['game_tag'] ?? '';
-        $image = $data['image'] ?? null;
-        
-        $stmt->bind_param("isss", $user_id, $content, $image, $game_tag);
-        
-        if ($stmt->execute()) {
-            return ['success' => true, 'post_id' => $stmt->insert_id];
-        }
-        
-        return ['success' => false, 'error' => 'Failed to create post'];
+    public function create($user_id, $content) {
+        $content = htmlspecialchars(strip_tags($content));
+        $stmt = $this->conn->prepare("INSERT INTO posts (user_id, content) VALUES (?, ?)");
+        $stmt->bind_param("is", $user_id, $content);
+        return $stmt->execute();
     }
 
-    // Get all posts for feed - FIXED to include profile_image
-    public function getAllPosts($user_id = null, $limit = 20) {
-        $query = "SELECT p.*, u.username, u.full_name, u.profile_image, u.level,
-                  (SELECT COUNT(*) > 0 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked
-                  FROM " . $this->table . " p
-                  JOIN users u ON p.user_id = u.id
-                  ORDER BY p.created_at DESC
-                  LIMIT ?";
+    public function getAll($user_id = null) {
+        $sql = "SELECT p.*, u.username, u.avatar,
+                (SELECT COUNT(*) > 0 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked
+                FROM posts p 
+                JOIN users u ON p.user_id = u.id 
+                ORDER BY p.created_at DESC";
         
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("ii", $user_id, $limit);
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
         
         $posts = [];
         while ($row = $result->fetch_assoc()) {
-            // FIX: Ensure profile_image has a value
-            if (empty($row['profile_image'])) {
-                $row['profile_image'] = 'default-avatar.png';
-            }
-            $row['comments'] = $this->getPostComments($row['id']);
             $posts[] = $row;
         }
-        
         return $posts;
     }
 
-    // Get posts by user - FIXED to include profile_image
-    public function getPostsByUser($user_id, $viewer_id = null, $limit = 20) {
-        $query = "SELECT p.*, u.username, u.full_name, u.profile_image, u.level,
-                  (SELECT COUNT(*) > 0 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked
-                  FROM " . $this->table . " p
-                  JOIN users u ON p.user_id = u.id
-                  WHERE p.user_id = ?
-                  ORDER BY p.created_at DESC
-                  LIMIT ?";
+    public function getByUser($user_id, $current_user_id = null) {
+        $sql = "SELECT p.*, u.username, u.avatar,
+                (SELECT COUNT(*) > 0 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked
+                FROM posts p 
+                JOIN users u ON p.user_id = u.id 
+                WHERE p.user_id = ? 
+                ORDER BY p.created_at DESC";
         
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("iii", $viewer_id, $user_id, $limit);
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("ii", $current_user_id, $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
         
         $posts = [];
         while ($row = $result->fetch_assoc()) {
-            // FIX: Ensure profile_image has a value
-            if (empty($row['profile_image'])) {
-                $row['profile_image'] = 'default-avatar.png';
-            }
-            $row['comments'] = $this->getPostComments($row['id']);
             $posts[] = $row;
         }
-        
         return $posts;
     }
 
-    // Get single post
-    public function getPostById($id, $user_id = null) {
-        $query = "SELECT p.*, u.username, u.full_name, u.profile_image, u.level
-                  FROM " . $this->table . " p
-                  JOIN users u ON p.user_id = u.id
-                  WHERE p.id = ?";
-        
-        $stmt = $this->conn->prepare($query);
+    public function getPostById($id) {
+        $stmt = $this->conn->prepare("SELECT * FROM posts WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result();
-        
-        if ($result->num_rows > 0) {
-            $post = $result->fetch_assoc();
-            if (empty($post['profile_image'])) {
-                $post['profile_image'] = 'default-avatar.png';
-            }
-            return $post;
-        }
-        
-        return null;
+        return $result->fetch_assoc();
     }
 
-    // Update post
     public function update($id, $user_id, $content) {
-        $query = "UPDATE " . $this->table . " 
-                  SET content = ? 
-                  WHERE id = ? AND user_id = ?";
-        
-        $stmt = $this->conn->prepare($query);
-        $content = $content;
+        $content = htmlspecialchars(strip_tags($content));
+        $stmt = $this->conn->prepare("UPDATE posts SET content = ? WHERE id = ? AND user_id = ?");
         $stmt->bind_param("sii", $content, $id, $user_id);
-        
         return $stmt->execute();
     }
 
-    // Delete post
     public function delete($id, $user_id) {
-        $query = "DELETE FROM " . $this->table . " WHERE id = ? AND user_id = ?";
-        $stmt = $this->conn->prepare($query);
+        $stmt = $this->conn->prepare("DELETE FROM posts WHERE id = ? AND user_id = ?");
         $stmt->bind_param("ii", $id, $user_id);
-        
         return $stmt->execute();
     }
 
-    // Search posts
-    public function searchPosts($keyword) {
-        $query = "SELECT p.*, u.username, u.full_name, u.profile_image, u.level
-                  FROM " . $this->table . " p
-                  JOIN users u ON p.user_id = u.id
-                  WHERE p.content LIKE ?
-                  ORDER BY p.created_at DESC
-                  LIMIT 50";
-        
-        $stmt = $this->conn->prepare($query);
-        $search_term = "%" . $keyword . "%";
-        $stmt->bind_param("s", $search_term);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        $posts = [];
-        while ($row = $result->fetch_assoc()) {
-            if (empty($row['profile_image'])) {
-                $row['profile_image'] = 'default-avatar.png';
-            }
-            $posts[] = $row;
-        }
-        
-        return $posts;
+    public function updateLikesCount($post_id) {
+        $stmt = $this->conn->prepare("UPDATE posts SET likes_count = (SELECT COUNT(*) FROM likes WHERE post_id = ?) WHERE id = ?");
+        $stmt->bind_param("ii", $post_id, $post_id);
+        return $stmt->execute();
     }
 
-    // Get post comments
-    private function getPostComments($post_id) {
-        $query = "SELECT c.*, u.username, u.full_name, u.profile_image
-                  FROM comments c
-                  JOIN users u ON c.user_id = u.id
-                  WHERE c.post_id = ?
-                  ORDER BY c.created_at ASC";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("i", $post_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        $comments = [];
-        while ($row = $result->fetch_assoc()) {
-            if (empty($row['profile_image'])) {
-                $row['profile_image'] = 'default-avatar.png';
-            }
-            $comments[] = $row;
-        }
-        
-        return $comments;
+    public function updateCommentsCount($post_id) {
+        $stmt = $this->conn->prepare("UPDATE posts SET comments_count = (SELECT COUNT(*) FROM comments WHERE post_id = ?) WHERE id = ?");
+        $stmt->bind_param("ii", $post_id, $post_id);
+        return $stmt->execute();
     }
 }
 ?>
